@@ -1,0 +1,182 @@
+:root {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --accent: #3b82f6;
+  --accent-fg: #ffffff;
+  --error-bg: #fef2f2;
+  --error-fg: #991b1b;
+}
+
+html.dark {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-fg: #0f172a;
+  --error-bg: #450a0a;
+  --error-fg: #fecaca;
+}
+
+body { background: var(--bg); color: var(--text); }
+
+.layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  padding: 16px;
+  gap: 12px;
+  overflow: auto;
+}
+
+.sidebar header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar h1 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.toggle {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.toggle:hover { border-color: var(--accent); }
+
+nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.nav-btn {
+  font-size: 12px;
+  padding: 6px 8px;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.nav-btn:hover { border-color: var(--accent); }
+.nav-btn.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+
+.editor-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.editor {
+  flex: 1;
+  min-height: 220px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+.editor:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.error {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--error-bg);
+  color: var(--error-fg);
+  white-space: pre-wrap;
+}
+
+footer {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.canvas {
+  position: relative;
+  overflow: auto;
+  padding: 24px;
+}
+
+.canvas-inner {
+  position: relative;
+  min-height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 16px;
+}
+
+.group .toolbar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.canvas-inner:hover .toolbar,
+.canvas-inner:focus-within .toolbar {
+  opacity: 1;
+}
+
+/* The export toolbar emits raw <button> elements with no chrome of its own —
+   give them a sensible default. */
+.group .toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.group .toolbar button:hover {
+  border-color: var(--border);
+  background: var(--bg);
+}

@@ -1,0 +1,62 @@
+{
+  "name": "merslim",
+  "version": "0.1.0",
+  "description": "A slimmer mermaid — SVG-first diagram renderer for mermaid-style syntax. 14 native diagram types, zero mermaid runtime dependency.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run type-check && npm test && npm run build"
+  },
+  "keywords": [
+    "diagram",
+    "mermaid",
+    "flowchart",
+    "sequence",
+    "gantt",
+    "svg",
+    "react"
+  ],
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "dependencies": {
+    "dagre": "^0.8.5"
+  },
+  "devDependencies": {
+    "@types/dagre": "^0.7.54",
+    "@types/jsdom": "^28.0.1",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tsup": "^8.3.0",
+    "typescript": "~5.8.2",
+    "vitest": "^4.1.6"
+  }
+}
