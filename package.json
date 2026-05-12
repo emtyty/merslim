@@ -4,6 +4,14 @@
   "description": "A slimmer mermaid — SVG-first diagram renderer for mermaid-style syntax. 14 native diagram types, zero mermaid runtime dependency.",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emtyty/merslim.git"
+  },
+  "homepage": "https://github.com/emtyty/merslim#readme",
+  "bugs": {
+    "url": "https://github.com/emtyty/merslim/issues"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
