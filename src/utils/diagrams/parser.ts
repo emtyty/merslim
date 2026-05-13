@@ -172,7 +172,7 @@ const SUBGRAPH_OPEN_RE = /^subgraph\s+([\w-]+)(?:\s*\[(.+?)\])?/i;
 // Gate for "this line looks like an edge". Includes the closing tail of
 // labeled-dotted edges (`A -. label .-> B`) — without it, the per-edge
 // regexes never get a chance to fire.
-const EDGE_LINE_REGEX = /-{2,}>|-{2,}|-\.-+>|\.-+>|={2,}>|-{2,}-|=={2,}/;
+const EDGE_LINE_REGEX = /-{2,}>|-{2,}|-\.-+>|\.-+>|={2,}>|-{2,}-|=={2,}|~~~/;
 
 export function parseFlowchart(source: string): FlowchartIR {
   const rawLines = source.split('\n');
@@ -242,13 +242,25 @@ export function parseFlowchart(source: string): FlowchartIR {
     if (EDGE_LINE_REGEX.test(line)) {
       const edge = parseEdge(line);
       if (edge) {
-        const from = parseNodeDecl(edge.from);
-        const to = parseNodeDecl(edge.to);
-        ensureNode(from);
-        ensureNode(to);
-        const e: EdgeIR = { source: from.id, target: to.id, kind: edge.kind };
-        if (edge.label) e.label = edge.label;
-        edges.push(e);
+        // Expand `&` multi-source / multi-target shorthand:
+        //   `A & B & C --> D & E`  →  Cartesian product (6 edges).
+        // `&` is not valid inside an id or shape-bracket, so splitting at
+        // the top level is safe.
+        const fromTokens = edge.from.split(/\s*&\s*/).filter(Boolean);
+        const toTokens = edge.to.split(/\s*&\s*/).filter(Boolean);
+        for (const f of fromTokens) {
+          const fromDecl = parseNodeDecl(f);
+          if (!fromDecl.id) continue;
+          ensureNode(fromDecl);
+          for (const t of toTokens) {
+            const toDecl = parseNodeDecl(t);
+            if (!toDecl.id) continue;
+            ensureNode(toDecl);
+            const e: EdgeIR = { source: fromDecl.id, target: toDecl.id, kind: edge.kind };
+            if (edge.label) e.label = edge.label;
+            edges.push(e);
+          }
+        }
         continue;
       }
     }
@@ -257,6 +269,13 @@ export function parseFlowchart(source: string): FlowchartIR {
     const decl = parseNodeDecl(line);
     if (decl.id) ensureNode(decl);
   }
+
+  // When a flowchart references a subgraph name as an edge endpoint
+  // (`A --> SettlementLayer` where SettlementLayer is also `subgraph
+  // SettlementLayer [...]`), the loop above will have created a node with
+  // the cluster's id. Drop those duplicates — the edge still carries the
+  // id, and the layout pass redirects it to a representative child.
+  for (const sg of subgraphs) nodes.delete(sg.id);
 
   return {
     type: 'flowchart',
@@ -348,6 +367,7 @@ function parseEdge(line: string): ParsedEdge | null {
 
   // Unlabeled or `|label|` syntax: `A --> |label| B`
   const unlabeled: { re: RegExp; kind: EdgeKind }[] = [
+    { re: /^(.+?)\s*~~~\s*(?:\|([^|]+)\|\s*)?(.+)$/, kind: 'invisible' },
     { re: /^(.+?)\s*-\.-+>\s*(?:\|([^|]+)\|\s*)?(.+)$/, kind: 'dashed' },
     { re: /^(.+?)\s*={2,}>\s*(?:\|([^|]+)\|\s*)?(.+)$/, kind: 'thick' },
     { re: /^(.+?)\s*-{2,}>\s*(?:\|([^|]+)\|\s*)?(.+)$/, kind: 'solid' },
