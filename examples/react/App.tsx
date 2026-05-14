@@ -6,15 +6,19 @@
 //   - One-time `bootstrapDiagramRenderers()` registers every native renderer
 //   - <DiagramRenderer source dark .../> parses + dispatches
 //   - A `handleRef` exposes the live SVG so the export toolbar can serialize it
+//   - `asciiSource` wires the toolbar's "Copy ASCII / Download .txt" buttons
 //   - `isDarkMode` / `watchDarkMode` track the `.dark` class on <html>
 
 import { useEffect, useRef, useState } from 'react';
 import {
   DiagramExportToolbar,
   DiagramRenderer,
+  asciiFromIR,
   bootstrapDiagramRenderers,
   isDarkMode,
+  parseToIR,
   watchDarkMode,
+  type DiagramIR,
   type RendererHandle,
 } from 'merslim';
 
@@ -51,9 +55,23 @@ const SAMPLES: Record<string, string> = {
 export default function App() {
   const [which, setWhich] = useState<keyof typeof SAMPLES>('flowchart');
   const [dark, setDark] = useState(isDarkMode);
+  const [ir, setIr] = useState<DiagramIR | null>(null);
   const handleRef = useRef<RendererHandle | null>(null);
 
   useEffect(() => watchDarkMode(setDark), []);
+
+  // Mirror DiagramRenderer's parse so the toolbar can lazily produce ASCII
+  // from the IR without re-parsing on every click.
+  useEffect(() => {
+    let cancelled = false;
+    parseToIR(SAMPLES[which]).then((result) => {
+      if (cancelled) return;
+      setIr(result.ok ? result.ir : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [which]);
 
   return (
     <div className="min-h-screen p-6">
@@ -78,6 +96,7 @@ export default function App() {
         />
         <DiagramExportToolbar
           source={() => handleRef.current?.getSvgElement() ?? null}
+          asciiSource={() => (ir ? asciiFromIR(ir) : null)}
           filenameBase={which}
           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition"
         />

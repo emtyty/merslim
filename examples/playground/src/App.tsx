@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DiagramExportToolbar,
   DiagramRenderer,
+  asciiFromIR,
   bootstrapDiagramRenderers,
   isDarkMode,
+  parseToIR,
   watchDarkMode,
+  type DiagramIR,
   type RendererHandle,
 } from 'merslim';
 import { SAMPLES, type SampleKey } from './samples';
@@ -16,9 +19,25 @@ export default function App() {
   const [source, setSource] = useState<string>(SAMPLES.flowchart.source);
   const [dark, setDark] = useState<boolean>(isDarkMode);
   const [error, setError] = useState<string | null>(null);
+  const [ir, setIr] = useState<DiagramIR | null>(null);
   const handleRef = useRef<RendererHandle | null>(null);
 
   useEffect(() => watchDarkMode(setDark), []);
+
+  // Keep a parsed IR around so the export toolbar can lazily render to
+  // ASCII without re-parsing on every click. DiagramRenderer parses
+  // internally too — a tiny duplication, but it keeps the renderer's
+  // public surface unchanged.
+  useEffect(() => {
+    let cancelled = false;
+    parseToIR(source).then((result) => {
+      if (cancelled) return;
+      setIr(result.ok ? result.ir : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [source]);
 
   // Toggle the global .dark class so the playground's chrome follows along.
   function toggleDark() {
@@ -71,8 +90,8 @@ export default function App() {
         {error && <div className="error">{error}</div>}
 
         <footer>
-          Hover the diagram to reveal the export toolbar (Copy SVG / Copy PNG /
-          Download SVG / Download PNG).
+          Hover the diagram to reveal the export toolbar — SVG, PNG, and
+          plain-text ASCII (Unicode box-drawing) are all one click away.
         </footer>
       </aside>
 
@@ -87,6 +106,7 @@ export default function App() {
           />
           <DiagramExportToolbar
             source={() => handleRef.current?.getSvgElement() ?? null}
+            asciiSource={() => (ir ? asciiFromIR(ir) : null)}
             filenameBase={active}
             className="toolbar"
             onError={(err) => setError(err.message)}

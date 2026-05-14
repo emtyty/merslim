@@ -21,6 +21,7 @@
 // ── Components ───────────────────────────────────────────────────────────
 export { default as DiagramRenderer } from './components/diagrams/DiagramRenderer';
 export { default as DiagramExportToolbar } from './components/diagrams/DiagramExportToolbar';
+export type { AsciiSource } from './components/diagrams/DiagramExportToolbar';
 
 // Individual renderers, exported so callers who already have an IR can
 // skip the source-string parsing step entirely. Static imports here mean
@@ -91,6 +92,29 @@ export {
 } from './utils/diagrams/svgBuilders';
 export type { StateBuildPositions } from './utils/diagrams/svgBuilders';
 
+// ── ASCII builders (use directly for terminal / log / plain-text output) ─
+//
+// Phase 1 — IR → string. Mirrors the SVG builder family. Unicode
+// box-drawing characters; one builder per diagram type. `sourceToAscii`
+// is the one-call convenience for callers who only have a mermaid source.
+export {
+  buildFlowchartAscii,
+  buildStateAscii,
+  buildSequenceAscii,
+  buildClassAscii,
+  buildErAscii,
+  buildMindmapAscii,
+  buildGanttAscii,
+  buildJourneyAscii,
+  buildPieAscii,
+  buildTimelineAscii,
+  buildQuadrantAscii,
+  buildGitGraphAscii,
+  buildArchitectureAscii,
+  buildC4Ascii,
+} from './utils/diagrams/asciiBuilders';
+export { sourceToAscii, asciiFromIR } from './utils/diagrams/asciiSource';
+
 // ── Export pipeline (clipboard / download / serialize) ──────────────────
 export {
   toSvgString,
@@ -100,6 +124,8 @@ export {
   downloadPng,
   copySvgToClipboard,
   copyPngToClipboard,
+  copyTextToClipboard,
+  downloadText,
   INLINEABLE_STYLE_PROPS,
 } from './utils/diagrams/export';
 export type {

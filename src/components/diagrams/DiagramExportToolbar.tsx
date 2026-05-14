@@ -2,10 +2,19 @@ import { useState, type MouseEvent } from 'react';
 import {
   copySvgToClipboard,
   copyPngToClipboard,
+  copyTextToClipboard,
   downloadSvg,
   downloadPng,
+  downloadText,
   type SvgSource,
 } from '../../utils/diagrams/export';
+
+/** A function that produces the ASCII representation of the current diagram.
+ *  Lazy because the call site (DiagramRenderer) only has the IR after the
+ *  source has been parsed; the toolbar shouldn't recompute ASCII on every
+ *  render. Return null to indicate no ASCII renderer is available for this
+ *  diagram type — the toolbar will hide the ASCII buttons. */
+export type AsciiSource = () => string | null;
 
 // Shared 4-button toolbar (Copy SVG, Copy PNG, Download SVG, Download PNG)
 // for any diagram-rendering surface. Renderer-agnostic: accepts any
@@ -22,13 +31,16 @@ interface DiagramExportToolbarProps {
   pngScale?: number;
   /** PNG background color. Pass `null` for transparent. Default: white. */
   pngBackground?: string | null;
+  /** Optional ASCII-text renderer. When provided, two additional buttons
+   *  ("ASCII" copy and ".TXT" download) appear in the toolbar. */
+  asciiSource?: AsciiSource;
   /** Outer container class (positioning, opacity, etc.). */
   className?: string;
   /** Called when an export operation throws. Default: silent. */
   onError?: (error: Error) => void;
 }
 
-type FlashState = 'idle' | 'svg-copied' | 'png-copied';
+type FlashState = 'idle' | 'svg-copied' | 'png-copied' | 'ascii-copied';
 
 // ── Inline icons (Lucide stroke style, 11px) ──────────────────────────────
 const ICON_PROPS = {
@@ -82,11 +94,28 @@ const IconImageDown = () => (
   </svg>
 );
 
+const IconTerminal = () => (
+  <svg {...ICON_PROPS}>
+    <polyline points="4 17 10 11 4 5" />
+    <line x1="12" y1="19" x2="20" y2="19" />
+  </svg>
+);
+
+const IconFileText = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+  </svg>
+);
+
 export default function DiagramExportToolbar({
   source,
   filenameBase = 'diagram',
   pngScale = 2,
   pngBackground,
+  asciiSource,
   className = '',
   onError,
 }: DiagramExportToolbarProps) {
@@ -126,6 +155,24 @@ export default function DiagramExportToolbar({
       () => downloadPng(source, `${filenameBase}.png`, { scale: pngScale, background: pngBackground }),
       e
     );
+
+  // ASCII handlers — resolve the source lazily so the renderer's IR is
+  // sampled at click time (not at toolbar mount time, which would miss
+  // updates from re-parsed source strings).
+  const handleCopyAscii = (e: MouseEvent) =>
+    safe(async () => {
+      const text = asciiSource?.();
+      if (!text) throw new Error('No ASCII renderer available for this diagram type');
+      await copyTextToClipboard(text);
+      flashAndReset('ascii-copied');
+    }, e);
+
+  const handleDownloadAscii = (e: MouseEvent) =>
+    safe(async () => {
+      const text = asciiSource?.();
+      if (!text) throw new Error('No ASCII renderer available for this diagram type');
+      await downloadText(text, `${filenameBase}.txt`);
+    }, e);
 
   const buttonClass =
     'flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-300 text-[10px] font-bold shadow-sm transition-colors';
@@ -170,6 +217,29 @@ export default function DiagramExportToolbar({
       >
         <IconImageDown /> PNG
       </button>
+      {asciiSource ? (
+        <>
+          <button
+            type="button"
+            onClick={handleCopyAscii}
+            className={buttonClass}
+            aria-label="Copy diagram as ASCII text to clipboard"
+            title="Copy as ASCII text"
+          >
+            {flash === 'ascii-copied' ? <IconCheck color="#22c55e" /> : <IconTerminal />}
+            {flash === 'ascii-copied' ? 'Copied!' : 'ASCII'}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadAscii}
+            className={buttonClass}
+            aria-label="Download diagram as plain-text file"
+            title="Download as .txt"
+          >
+            <IconFileText /> TXT
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }

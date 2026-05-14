@@ -270,3 +270,14 @@ export async function copyPngToClipboard(source: SvgSource, options: PngOptions 
   }
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
 }
+
+/** Copy arbitrary text (e.g. an ASCII-rendered diagram) to the clipboard. */
+export async function copyTextToClipboard(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
+}
+
+/** Trigger a browser download of arbitrary text as a `.txt` file. */
+export async function downloadText(text: string, filename: string): Promise<void> {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  triggerDownload(blob, filename);
+}

@@ -1,14 +1,16 @@
 // End-to-end example: parse a mermaid-style source string, build a
-// self-contained SVG, and write it to disk. Run with:
+// self-contained SVG **and** a Unicode-box-drawing ASCII rendering, and
+// write both to disk. Run with:
 //
 //   npm install && npm start
 //
-// One file per diagram type lands in ./out/.
+// One `.svg` plus one `.txt` per diagram type lands in ./out/.
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  asciiFromIR,
   buildArchitectureSvg,
   buildC4Svg,
   buildGanttSvg,
@@ -185,9 +187,19 @@ async function main() {
       continue;
     }
     const svg = renderToSvg(parsed.ir);
-    const path = join(OUT_DIR, `${name}.svg`);
-    await writeFile(path, svg, 'utf8');
-    console.log(`✓ ${name}  →  ${path}  (${svg.length.toLocaleString()} bytes)`);
+    const svgPath = join(OUT_DIR, `${name}.svg`);
+    await writeFile(svgPath, svg, 'utf8');
+
+    const ascii = asciiFromIR(parsed.ir);
+    if (ascii !== null) {
+      const txtPath = join(OUT_DIR, `${name}.txt`);
+      await writeFile(txtPath, ascii, 'utf8');
+      console.log(
+        `✓ ${name}  →  ${svgPath} (${svg.length.toLocaleString()} bytes) + ${txtPath} (${ascii.length.toLocaleString()} chars)`
+      );
+    } else {
+      console.log(`✓ ${name}  →  ${svgPath} (${svg.length.toLocaleString()} bytes) [no ASCII builder]`);
+    }
   }
 }
 

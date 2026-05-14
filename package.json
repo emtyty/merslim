@@ -1,7 +1,7 @@
 {
   "name": "merslim",
-  "version": "0.1.0",
-  "description": "A slimmer mermaid — SVG-first diagram renderer for mermaid-style syntax. 14 native diagram types, zero mermaid runtime dependency.",
+  "version": "0.2.1",
+  "description": "A slimmer mermaid — SVG + ASCII diagram renderer for mermaid-style syntax. 14 native diagram types, zero mermaid runtime dependency.",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -44,6 +44,8 @@
     "sequence",
     "gantt",
     "svg",
+    "ascii",
+    "terminal",
     "react"
   ],
   "peerDependencies": {

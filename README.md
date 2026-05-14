@@ -8,7 +8,7 @@ A **slimmer mermaid** — SVG-first diagram renderer for mermaid-style syntax. 1
 | Runtime deps | `dagre` only |
 | Peer deps | `react ^18 \|\| ^19`, `react-dom ^18 \|\| ^19` |
 | Mermaid | **none** — parsers and renderers are native |
-| Output | Standalone SVG (computed styles inlined for fidelity) |
+| Outputs | Standalone SVG, PNG (via canvas), and plain-text ASCII (Unicode box-drawing) |
 | License | MIT |
 
 ## Why
@@ -73,7 +73,7 @@ export function MyDiagram({ source }: { source: string }) {
 }
 ```
 
-The toolbar gives you four buttons — copy SVG, copy PNG, download SVG, download PNG — all routed through the same standalone-SVG serializer.
+The toolbar gives you four buttons — copy SVG, copy PNG, download SVG, download PNG — all routed through the same standalone-SVG serializer. Pass an optional `asciiSource` to add two more (copy ASCII, download `.txt`); see [ASCII output](#ascii-output) below.
 
 ## Headless / SSR
 
@@ -101,6 +101,79 @@ if (result.ok && result.type === 'flowchart') {
 > c4, architecture, gitgraph) are one-call already.
 > See [`examples/headless/generate.ts`](./examples/headless/generate.ts) for
 > the full pattern.
+
+## ASCII output
+
+Every one of the 14 diagram types also renders to plain text using Unicode
+box-drawing characters — useful for terminals, CI logs, code review
+comments, plain-text emails, and LLM tool outputs.
+
+```ts
+import { sourceToAscii } from 'merslim';
+
+const text = await sourceToAscii(`
+flowchart LR
+  A[Start] --> B --> C[End]
+`);
+console.log(text);
+//  ┌───────┐    ┌─────┐    ┌─────┐
+//  │ Start │────▶  B  │────▶ End │
+//  └───────┘    └─────┘    └─────┘
+```
+
+If you already have an IR (e.g. from `parseToIR` or hand-built), use the
+synchronous `asciiFromIR(ir)` instead:
+
+```ts
+import { asciiFromIR, parseToIR } from 'merslim';
+
+const result = await parseToIR(source);
+if (result.ok) {
+  const text = asciiFromIR(result.ir);
+}
+```
+
+Per-type builders are also exported when you only need one:
+`buildFlowchartAscii`, `buildSequenceAscii`, `buildErAscii`,
+`buildClassAscii`, `buildStateAscii`, `buildMindmapAscii`,
+`buildGanttAscii`, `buildJourneyAscii`, `buildPieAscii`,
+`buildTimelineAscii`, `buildQuadrantAscii`, `buildGitGraphAscii`,
+`buildArchitectureAscii`, `buildC4Ascii`.
+
+### In the toolbar
+
+Pass an `asciiSource` function to `<DiagramExportToolbar/>` to surface two
+extra buttons ("ASCII" copy / ".TXT" download):
+
+```tsx
+import {
+  DiagramRenderer,
+  DiagramExportToolbar,
+  asciiFromIR,
+  parseToIR,
+  type DiagramIR,
+  type RendererHandle,
+} from 'merslim';
+
+export function MyDiagram({ source }: { source: string }) {
+  const handleRef = useRef<RendererHandle | null>(null);
+  const [ir, setIr] = useState<DiagramIR | null>(null);
+
+  useEffect(() => {
+    parseToIR(source).then((r) => setIr(r.ok ? r.ir : null));
+  }, [source]);
+
+  return (
+    <div className="group relative">
+      <DiagramRenderer source={source} handleRef={handleRef} />
+      <DiagramExportToolbar
+        source={() => handleRef.current?.getSvgElement() ?? null}
+        asciiSource={() => (ir ? asciiFromIR(ir) : null)}
+      />
+    </div>
+  );
+}
+```
 
 ## Build your own IR
 
@@ -168,7 +241,7 @@ useEffect(() => watchDarkMode(setDark), []);
 | Export | Purpose |
 |---|---|
 | `<DiagramRenderer source dark handleRef onError/>` | Parses a source string, dispatches to the matching renderer, exposes a `RendererHandle` ref. |
-| `<DiagramExportToolbar source filenameBase pngScale .../>` | 4-button copy/download toolbar. Accepts any `SvgSource`. |
+| `<DiagramExportToolbar source asciiSource filenameBase pngScale .../>` | Copy/download toolbar — 4 buttons by default (SVG/PNG copy + download), plus 2 more (ASCII copy + `.txt` download) when `asciiSource` is supplied. |
 | `<FlowchartRenderer/>` `<SequenceRenderer/>` `<ERRenderer/>` `<ClassRenderer/>` `<StateRenderer/>` `<GanttRenderer/>` `<TimelineRenderer/>` `<PieRenderer/>` `<QuadrantRenderer/>` `<JourneyRenderer/>` `<MindmapRenderer/>` `<ArchitectureRenderer/>` `<C4Renderer/>` `<GitGraphRenderer/>` | Direct-mount renderer per diagram type. Same `RendererProps<T>` signature: `{ ir, dark, handleRef }`. Use these when you already have an IR. |
 
 ### Parser / IR
@@ -195,14 +268,22 @@ Plus the chart-shaped diagrams which never need positions:
 All builders take a final `{ dark, padding }` options object and return a
 self-contained SVG string with `role="img"` and an `aria-label`.
 
+### ASCII builders (headless)
+
+| Export | Type | Purpose |
+|---|---|---|
+| `sourceToAscii(source)` | `(string) => Promise<string \| null>` | One-call mermaid source → text. `null` only when parsing fails. |
+| `asciiFromIR(ir)` | `(DiagramIR) => string \| null` | Synchronous IR → text dispatch. Covers all 14 diagram types. |
+| `build{Type}Ascii(ir)` | `(IR) => string` | Per-type builder. One per diagram type — same naming as the SVG builders. |
+
 ### Export pipeline
 
 | Export | Purpose |
 |---|---|
 | `toSvgString(source, opts)` | Serialize any `SvgSource` to a standalone SVG string. |
 | `svgToPngBlob(svg, opts)` | Rasterize an SVG string to a PNG `Blob`. |
-| `downloadSvg / downloadPng` | Trigger a file download. |
-| `copySvgToClipboard / copyPngToClipboard` | Write SVG (text) / PNG (image) to the clipboard. |
+| `downloadSvg / downloadPng / downloadText` | Trigger a file download (SVG, PNG, or plain text). |
+| `copySvgToClipboard / copyPngToClipboard / copyTextToClipboard` | Write SVG (text), PNG (image), or arbitrary text to the clipboard. |
 | `getSvgDimensions(svg)` | Best-effort intrinsic size from `viewBox` / attrs. |
 
 ### Registry
@@ -217,12 +298,14 @@ self-contained SVG string with `role="img"` and an `aria-label`.
 
 - [`examples/playground/`](./examples/playground/) — Vite + React playground
   with all 14 diagram types, a live source editor, dark-mode toggle, and
-  the export toolbar. `npm install && npm run dev` (or `npm run build` for a
-  static `dist/` that opens directly from `file://`).
-- [`examples/headless/`](./examples/headless/) — Node script that generates
-  one self-contained SVG per diagram type. `npm install && npm start`.
+  the export toolbar (SVG + PNG + ASCII). `npm install && npm run dev` (or
+  `npm run build` for a static `dist/` that opens directly from `file://`).
+- [`examples/headless/`](./examples/headless/) — Node script that emits one
+  self-contained SVG **and** one Unicode-box-drawing `.txt` per diagram
+  type. `npm install && npm start`.
 - [`examples/react/App.tsx`](./examples/react/App.tsx) — Minimal React
-  snippet showing the same component wiring without the playground chrome.
+  snippet showing the same component wiring (including ASCII toolbar
+  buttons) without the playground chrome.
 
 ## Development
 
